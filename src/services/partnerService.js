@@ -1,22 +1,33 @@
-/**
- * Partner service layer.
- * INTEGRATION POINT — connect the real BubbleXWash backend inside these functions.
- * UI components must never call an API directly.
- */
+import { createServerFn } from "@tanstack/react-start";
+import clientPromise from "../lib/mongodb";
+
+const submitPartnerToDb = createServerFn({ method: "POST" })
+  .validator((data) => data)
+  .handler(async ({ data }) => {
+    try {
+      const client = await clientPromise;
+      const db = client.db();
+      const partnersCollection = db.collection("partners");
+
+      const document = {
+        ...data,
+        createdAt: new Date(),
+      };
+
+      const result = await partnersCollection.insertOne(document);
+      return { success: true, id: result.insertedId.toString() };
+    } catch (error) {
+      console.error("Database error during partner registration:", error);
+      throw new Error("Failed to save registration: " + error.message);
+    }
+  });
 
 /** Submit a partner application. */
 export async function registerPartner(data) {
-  // Connect BubbleXWash backend here, e.g.
-  // const res = await fetch(`${API_BASE}/partners/apply`, { method: "POST", body: JSON.stringify(data) });
-  // if (!res.ok) throw new Error("Application could not be submitted.");
-  // return res.json();
-  await delay(900);
   if (!data?.businessName) {
     throw new Error("Business name is required.");
   }
-  return { status: "received", reference: null };
-}
 
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  const result = await submitPartnerToDb({ data });
+  return { status: "received", reference: result.id };
 }
